@@ -39,7 +39,7 @@ REQUEST_HEADERS = {
 AKAMAI_PRAGMA_HEADERS = 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key'
 
 # Test URLs in batches to avoid overwhelming the server
-URL_BATCH_SIZE = 3  # Process 10 URLs at a time
+URL_BATCH_SIZE = 10  # Process 10 URLs at a time
 BATCH_DELAY = 1.0  # Wait 1 second between batches
 
 def parse_sitemap(sitemap_url):
@@ -336,23 +336,15 @@ def index():
     """Render the main page"""
     return render_template('index.html')
 
-
-@app.route('/test', methods=['POST'])
-def test_sitemap():
+@app.route('/countUrls', methods=['POST'])
+def count_sitemap_urls():
     """
-    Process sitemap URL and test all pages in batches
-    Tests URLs in batches with delays between batches
-
-    Request JSON parameters:
-    - sitemap_url (str): URL of the sitemap to test
-    - check_aem (bool, optional): Whether to check for AEM detection (default: True)
-
-    Returns JSON with results including cache status and optionally AEM detection
+    Count URLs in sitemap.xml without testing
     """
     data = request.get_json()
     sitemap_url = data.get('sitemap_url', '').strip()
-    check_aem = data.get('check_aem', True)  # Default to True (checked by default)
 
+    # Validation
     if not sitemap_url:
         return jsonify({'error': 'Please provide a sitemap URL'}), 400
 
@@ -363,16 +355,66 @@ def test_sitemap():
         if not urls:
             return jsonify({'error': 'No URLs found in sitemap'}), 400
 
-        # Limit to reasonable number for demo (remove in production)
-        max_urls = 100
-        if len(urls) > max_urls:
+        return jsonify({
+            'success': True,
+            'total_urls': len(urls),
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/test', methods=['POST'])
+def test_sitemap():
+    """
+    Process sitemap URL and test all pages in batches
+    Tests URLs in batches with delays between batches
+
+    Request JSON parameters:
+    - sitemap_url (str): URL of the sitemap to test
+    - check_aem (bool, optional): Whether to check for AEM detection (default: True)
+    - batch_size (int, optional): Number of URLs to process per batch (default: 3)
+    - batch_delay (float, optional): Seconds to wait between batches (default: 1.0)
+    - max_urls (int, optional): Maximum number of URLs to process (default: None/unlimited)
+
+    Returns JSON with results including cache status and optionally AEM detection
+    """
+    data = request.get_json()
+    sitemap_url = data.get('sitemap_url', '').strip()
+    check_aem = data.get('check_aem', True)  # Default to True (checked by default)
+    batch_size = data.get('batch_size', URL_BATCH_SIZE)  # Default to constant
+    batch_delay = data.get('batch_delay', BATCH_DELAY)  # Default to constant
+    max_urls = data.get('max_urls', None)  # Default to None (no limit)
+
+    # Validation
+    if not sitemap_url:
+        return jsonify({'error': 'Please provide a sitemap URL'}), 400
+
+    if not isinstance(batch_size, int) or batch_size < 1 or batch_size > 100:
+        return jsonify({'error': 'Batch size must be an integer between 1 and 100'}), 400
+
+    if not isinstance(batch_delay, (int, float)) or batch_delay < 0 or batch_delay > 10:
+        return jsonify({'error': 'Batch delay must be a number between 0 and 10'}), 400
+
+    if max_urls is not None and (not isinstance(max_urls, int) or max_urls < 1):
+        return jsonify({'error': 'Max URLs must be a positive integer'}), 400
+
+    try:
+        # Parse sitemap
+        urls = parse_sitemap(sitemap_url)
+
+        if not urls:
+            return jsonify({'error': 'No URLs found in sitemap'}), 400
+
+        # Apply max_urls limit if specified
+        if max_urls is not None and len(urls) > max_urls:
             urls = urls[:max_urls]
 
         results = []
 
         # Split URLs into batches
-        for i in range(0, len(urls), URL_BATCH_SIZE):
-            batch = urls[i:i + URL_BATCH_SIZE]
+        for i in range(0, len(urls), batch_size):
+            batch = urls[i:i + batch_size]
 
             # Process current batch concurrently
             with ThreadPoolExecutor(max_workers=10) as executor:
@@ -383,8 +425,8 @@ def test_sitemap():
                     results.append(result)
 
             # Wait before processing next batch (unless this is the last batch)
-            if i + URL_BATCH_SIZE < len(urls):
-                time.sleep(BATCH_DELAY)
+            if i + batch_size < len(urls):
+                time.sleep(batch_delay)
         
         # Calculate statistics
         total = len(results)

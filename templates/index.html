@@ -71,7 +71,63 @@
             outline: none;
             border-color: #667eea;
         }
-        
+
+        /* Collapsible configuration section */
+        .config-toggle {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .config-toggle:hover {
+            background: #e9ecef;
+        }
+
+        .config-toggle-text {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .config-toggle-icon {
+            transition: transform 0.3s;
+            font-size: 14px;
+        }
+
+        .config-toggle-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .config-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .config-content.open {
+            max-height: 500px;
+        }
+
+        .config-section {
+            padding: 20px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            margin-top: -8px;
+            margin-bottom: 20px;
+        }
+
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -363,6 +419,55 @@
                 </label>
             </div>
 
+            <div class="config-toggle" onclick="toggleConfiguration()">
+                <div class="config-toggle-text">
+                    <span>⚙️ Configuration</span>
+                    <span style="font-size: 12px; color: #6c757d; font-weight: normal;">(Batch size, delays, limits)</span>
+                </div>
+                <span class="config-toggle-icon" id="configToggleIcon">▼</span>
+            </div>
+
+            <div class="config-content" id="configContent">
+                <div class="config-section">
+                    <div class="input-group">
+                        <label for="batchSize">Batch Size</label>
+                        <input
+                            type="number"
+                            id="batchSize"
+                            placeholder="10"
+                            value="10"
+                            min="1"
+                            max="100">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="batchDelay">Pause Between Batches (seconds)</label>
+                        <input
+                            type="number"
+                            id="batchDelay"
+                            placeholder="1.0"
+                            value="1.0"
+                            min="0"
+                            max="10"
+                            step="0.1">
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label for="maxUrls">Max URLs (optional)</label>
+                        <input
+                            type="number"
+                            id="maxUrls"
+                            placeholder="No limit"
+                            value=""
+                            min="1">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" id="countUrlsBtn" onclick="runCountUrls()">
+                Count URLs
+            </button>
+
             <button class="btn" id="testBtn" onclick="runTest()">
                 Test Sitemap
             </button>
@@ -447,9 +552,29 @@
         async function runTest() {
             const sitemapUrl = document.getElementById('sitemapUrl').value.trim();
             const checkAem = document.getElementById('checkAem').checked;
+            const batchSize = parseInt(document.getElementById('batchSize').value) || 3;
+            const batchDelay = parseFloat(document.getElementById('batchDelay').value) || 1.0;
+            const maxUrlsValue = document.getElementById('maxUrls').value.trim();
+            const maxUrls = maxUrlsValue ? parseInt(maxUrlsValue) : null;
 
             if (!sitemapUrl) {
                 showError('Please enter a sitemap URL');
+                return;
+            }
+
+            // Validate batch size and delay
+            if (batchSize < 1 || batchSize > 100) {
+                showError('Batch size must be between 1 and 100');
+                return;
+            }
+
+            if (batchDelay < 0 || batchDelay > 10) {
+                showError('Batch delay must be between 0 and 10 seconds');
+                return;
+            }
+
+            if (maxUrls !== null && maxUrls < 1) {
+                showError('Max URLs must be at least 1');
                 return;
             }
 
@@ -469,7 +594,10 @@
                     },
                     body: JSON.stringify({
                         sitemap_url: sitemapUrl,
-                        check_aem: checkAem
+                        check_aem: checkAem,
+                        batch_size: batchSize,
+                        batch_delay: batchDelay,
+                        max_urls: maxUrls
                     })
                 });
                 
@@ -491,6 +619,51 @@
                 document.getElementById('testBtn').disabled = false;
             }
         }
+
+        async function runCountUrls() {
+            const sitemapUrl = document.getElementById('sitemapUrl').value.trim();
+
+            if (!sitemapUrl) {
+                showError('Please enter a sitemap URL');
+                return;
+            }
+
+            // Reset UI
+            hideError();
+            document.getElementById('testBtn').disabled = true;
+            document.getElementById('exportBtn').style.display = 'none';
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('summary').classList.remove('active');
+            document.getElementById('resultsContainer').classList.remove('active');
+
+            try {
+                const response = await fetch('/countUrls', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sitemap_url: sitemapUrl
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to count urls in the sitemap');
+                }
+                
+                urlsInSitemap = data.results;
+
+                displayCount(data);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('testBtn').disabled = false;
+            }
+        }        
 
         function displayResults(data) {
             const { summary, results } = data;
@@ -540,6 +713,25 @@
             document.getElementById('exportBtn').style.display = 'inline-block';
         }
 
+        function displayCount(data) {
+            
+            // Display summary
+            const summaryHTML = `
+                <div class="stat-card">
+                    <div class="value">${data.total_urls}</div>
+                    <div class="label">Total URLs</div>
+                </div>
+            `;
+            
+            document.getElementById('summary').innerHTML = summaryHTML;
+            document.getElementById('summary').classList.add('active');
+
+
+            document.getElementById('resultsContainer').classList.add('active');
+            document.getElementById('exportBtn').style.display = 'inline-block';
+        }
+
+        
         function renderTable() {
             const tbody = document.getElementById('resultsBody');
             tbody.innerHTML = '';
@@ -737,6 +929,12 @@
 
         function updateResultsCount() {
             const total = currentResults ? currentResults.length : 0;
+            
+            document.getElementById('resultsCount').textContent = `(${total} results)`;
+        }
+            
+        function updateResultsCount() {
+            const total = currentResults ? currentResults.length : 0;
             const filtered = filteredResults ? filteredResults.length : 0;
 
             const countText = filtered === total
@@ -777,16 +975,24 @@
             }
         }
         
+        function toggleConfiguration() {
+            const content = document.getElementById('configContent');
+            const icon = document.getElementById('configToggleIcon');
+
+            content.classList.toggle('open');
+            icon.classList.toggle('open');
+        }
+
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
             errorDiv.classList.add('active');
         }
-        
+
         function hideError() {
             document.getElementById('errorMessage').classList.remove('active');
         }
-        
+
         // Allow Enter key to submit
         document.getElementById('sitemapUrl').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
