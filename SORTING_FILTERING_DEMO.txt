@@ -1,0 +1,152 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    SORTING & FILTERING FEATURE DEMO                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Detailed Results (15 of 50 results)              [Clear Filters]            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ COLUMN HEADERS (Clickable for Sorting)                                      │
+├─────────────┬─────────┬──────────────┬────────┬───────────────┬─────────────┤
+│ URL ⇅       │Status ⇅ │Cache Hit ▼   │Is AEM ⇅│AEM Conf. ⇅    │X-Cache ⇅    │
+├─────────────┼─────────┼──────────────┼────────┼───────────────┼─────────────┤
+│ FILTER ROW (Inputs & Dropdowns)                                             │
+├─────────────┼─────────┼──────────────┼────────┼───────────────┼─────────────┤
+│[Filter URL] │[Filter] │[All      ▼]  │[All ▼] │[Filter]       │[Filter]     │
+│             │         │ HIT          │ Yes    │               │             │
+│             │         │ HIT(infer)   │ No     │               │             │
+│             │         │ MISS         │ N/A    │               │             │
+│             │         │ MISS(infer)  │        │               │             │
+│             │         │ REFRESH_HIT  │        │               │             │
+│             │         │ NOT_CACHEABLE│        │               │             │
+│             │         │ ERROR        │        │               │             │
+├─────────────┼─────────┼──────────────┼────────┼───────────────┼─────────────┤
+│ DATA ROWS                                                                    │
+├─────────────┼─────────┼──────────────┼────────┼───────────────┼─────────────┤
+│ example.com │  200    │  ╔═══╗      │  Yes   │    0.85       │ TCP_HIT     │
+│ /page1      │         │  ║HIT║      │        │               │             │
+│             │         │  ╚═══╝      │        │               │             │
+├─────────────┼─────────┼──────────────┼────────┼───────────────┼─────────────┤
+│ example.com │  200    │  ╔════╗     │  Yes   │    0.72       │ TCP_HIT     │
+│ /page2      │         │  ║HIT ║     │        │               │             │
+│             │         │  ╚════╝     │        │               │             │
+├─────────────┼─────────┼──────────────┼────────┼───────────────┼─────────────┤
+│ example.com │  200    │  ╔═════╗    │  No    │    0.12       │ TCP_MISS    │
+│ /page3      │         │  ║MISS ║    │        │               │             │
+│             │         │  ╚═════╝    │        │               │             │
+└─────────────┴─────────┴──────────────┴────────┴───────────────┴─────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FEATURE DEMONSTRATIONS:
+
+1. SORTING
+   ─────────
+   Click "Cache Hit ▼" header:
+   • First click:  Ascending  (▲) - HIT, MISS, etc.
+   • Second click: Descending (▼) - ERROR, MISS, HIT
+   • Third click:  No sort    (⇅) - Original order
+
+   Current state: Sorted by Cache Hit (Descending) as shown by ▼
+
+2. FILTERING
+   ──────────
+   Example filters shown:
+   • URL filter: Empty (all URLs shown)
+   • Status filter: Empty (all statuses shown)
+   • Cache Hit filter: "All" selected
+   • Is AEM filter: "All" selected
+
+   To filter for cache misses only:
+   └─> Select "MISS" from Cache Hit dropdown
+       Result: Only rows with MISS shown
+
+3. COMBINED OPERATIONS
+   ────────────────────
+   Example: Find all AEM sites with cache hits
+   
+   Step 1: Click "Is AEM" dropdown → Select "Yes"
+   Step 2: Click "Cache Hit" dropdown → Select "HIT"
+   
+   Result: Shows only rows where:
+           • is_aem = Yes
+           • cache_hit = HIT
+           
+   Counter updates: "(5 of 50 results)"
+
+4. CLEAR FILTERS BUTTON
+   ────────────────────
+   When any filter is active:
+   └─> [Clear Filters] button appears (top-right)
+       Click to reset all filters instantly
+       
+   Result: All 50 results shown again
+           Counter: "(50 results)"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+VISUAL INDICATORS:
+
+Sort State Icons:
+  ⇅  = No sort (default)
+  ▲  = Ascending sort
+  ▼  = Descending sort
+
+Badge Colors (Cache Status):
+  ╔═══╗
+  ║HIT║  = Green badge  (success)
+  ╚═══╝
+  
+  ╔════╗
+  ║MISS║  = Red badge (danger)
+  ╚════╝
+  
+  ╔══════════════╗
+  ║NOT_CACHEABLE║  = Yellow badge (warning)
+  ╚══════════════╝
+  
+  ╔═════╗
+  ║ERROR║  = Red badge (error)
+  ╚═════╝
+
+Interactive Elements:
+  • Headers: Hover shows light gray background
+  • Filters: Purple border on focus
+  • Dropdowns: Pointer cursor
+  • Clear button: Hover shows darker gray
+
+═══════════════════════════════════════════════════════════════════════════════
+
+USE CASE EXAMPLES:
+
+Use Case 1: Identify Cache Performance Issues
+  ┌─────────────────────────────────────────────┐
+  │ 1. Select "MISS" in Cache Hit filter        │
+  │ 2. Click Status header to sort              │
+  │ 3. Review which pages consistently miss     │
+  └─────────────────────────────────────────────┘
+
+Use Case 2: Audit AEM Implementation
+  ┌─────────────────────────────────────────────┐
+  │ 1. Select "Yes" in Is AEM filter            │
+  │ 2. Sort by AEM Confidence (descending)      │
+  │ 3. Review confidence scores                 │
+  └─────────────────────────────────────────────┘
+
+Use Case 3: Debug Specific URLs
+  ┌─────────────────────────────────────────────┐
+  │ 1. Type domain in URL filter                │
+  │ 2. Review all pages for that domain         │
+  │ 3. Check cache status patterns              │
+  └─────────────────────────────────────────────┘
+
+Use Case 4: Export Subset of Results
+  ┌─────────────────────────────────────────────┐
+  │ 1. Apply desired filters                    │
+  │ 2. Sort as needed                           │
+  │ 3. Click "Export to CSV"                    │
+  │ Note: Exports ALL results, not just filtered│
+  └─────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
